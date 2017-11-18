@@ -1,6 +1,6 @@
 
 function calculate() {
-	var base_url = "http://games.espn.com/ffl/api/v2/leagueSettings?"
+	var base_url = "https://games.espn.com/ffl/api/v2/leagueSettings?"
 	var leagueId = document.getElementById("leagueId").value;
 	var seasonId = document.getElementById("seasonId").value;
 
