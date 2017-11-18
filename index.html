@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+	<head>
+        <title>Fantasy Football Playoff Odds</title> 
+        <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+        <link href="https://fonts.googleapis.com/css?family=Abel" rel="stylesheet">
+        <style>
+            body {
+                font-family: 'Abel', sans-serif;
+            }
+            h2 {
+                font-size: 40px;
+                margin-top: 20px;
+                color: black;
+            }
+            h3 {
+                font-size: 20px;
+                margin-top: 20px;
+                width: 960px;
+                color: black;
+            }
+
+            ul {
+                font-family: 'Abel', sans-serif;
+                font-size: 12pt;
+            }
+
+            input[type=text], select {
+                width: 100px;
+                padding: 4px 5px;
+                margin: 8px 0;
+                display: inline-block;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                box-sizing: border-box;
+            }
+
+            button {
+                width: 100px;
+                padding: 4px 5px;
+                margin: 8px 8px;
+                display: inline-block;  
+            }
+
+            .title {
+                margin: auto;
+                width: 960px;
+                display: flex;
+                justify-content: space-between;
+            }
+
+            .input {
+                margin: auto;
+                width: 960px;
+                display: flex;
+            }
+
+            .table {
+                margin: auto;
+                width: 960px;
+                display: flex;
+                justify-content: space-between;
+            }
+
+            #table_score {
+                width: 40%;
+            }
+
+            #rt, #jt {
+                font-size: 18px;
+            }
+
+            table {
+                border-collapse: collapse;
+                table-layout: fixed;
+                margin-bottom: 20px;
+                width: 100%;
+            }
+
+            td, th {
+                border: 1px solid #dddddd;
+                text-align: center;
+                padding: 8px;
+            }
+
+            th {
+                font-size: 18px;
+            }
+        </style>
+        <script src=https://cdnjs.cloudflare.com/ajax/libs/mathjs/3.16.5/math.js></script>
+        <script src="https://code.jquery.com/jquery-1.11.2.min.js"></script>
+        <script src="main.js"></script>
+    </head>
+    <body> 
+        <div class="title">
+            <h2>Fantasy Football Playoff Odds</h2>
+            <h2><small>by <a href="https://github.com/rodger-yuan">rodger yuan</a> </small></h2>
+        </div>
+        <hr>
+        <div class="title">
+            <ul>
+                <li>Eligible League Settings: Playoffs based on league record with points scored tiebreaker</li>
+                <li>Ensure that your league settings are set to Public</li>
+                <li>Enter your League ID and the desired Year (Ex. SD League: 1391371, Mod League: 806354)</li>
+                <li>Monte Carlo simulation (10,000 iterations)</li>
+                <li>Likelihood of each matchup is determined by taking the avg and std. dev. of points scored for each team for the most recent 5 games</li>
+            </ul>
+        </div>
+        <div class="title">
+            <h3> League Parameters </h3>
+        </div>
+        <div class="input">
+            <form>
+                <label for="leagueId">League ID:</label>
+                <input type="text" name="leagueId" id="leagueId" value="1391371">
+                <label for="seasonId">Year:</label>
+                <input type="text" name="seasonId" id="seasonId" value="2017">
+            </form>
+            <button onclick="calculate()">Calculate</button>
+        </div>
+        <div>
+            <div class="title">
+                <h3> Playoff Odds </h3>
+            </div>
+            <div class="table">
+                <table id="playoff_odds">
+                    <tr id="playoff_odds_header">
+                        <th width = "20%">Press Calculate</th>
+                    </tr>
+                    <tbody id="playoff_odds_body"></tbody>
+                </table>
+            </div>
+            <div class="title">
+                <h3> Standings </h3>
+            </div>
+            <div class="table">
+                <table id="standings">
+                    <tr id="standings_header">
+                        <th width = "20%">Name</th>
+                        <th>Wins</th>
+                        <th>Losses</th>
+                        <th>Draws</th>
+                        <th>PF</th>
+                        <th>PA</th>
+                    </tr>
+                    <tbody id="standings_body"></tbody>
+                </table>
+            </div>
+            <div class="title">
+                <h3> Scoreboard </h3>
+            </div>
+            <div class="table">
+                <table id="scoreboard">
+                    <tr id="scoreboard_header">
+                        <th width = "20%">Press Calculate</th>
+                    </tr>
+                    <tbody id="scoreboard_body"></tbody>
+                </table>
+            </div>
+        </div>
+    </body>
+</html>
