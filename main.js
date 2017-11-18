@@ -14,10 +14,8 @@ function calculate() {
 	    	var leagueMembers = data.leaguesettings.leagueMembers;
 	    	var teams = data.leaguesettings.teams;
 
-	    	console.log(data);
-
-	    	for (var i = 0; i < teams["1"].scheduleItems.length; ++i) { // find out which week it is
-	    		var item = teams["1"].scheduleItems[i];
+	    	for (var i = 0; i < teams[Object.keys(teams)[0]].scheduleItems.length; ++i) { // find out which week it is
+	    		var item = teams[Object.keys(teams)[0]].scheduleItems[i];
 	    		if (item.matchups[0].outcome == 0) {
 	    			var currentMatchupPeriod = item.matchupPeriodId;
 	    			break;
@@ -210,28 +208,28 @@ function get_score_stats(player, currentMatchupPeriod) {
 
 function get_score_stats_all(teams, currentMatchupPeriod, num_Teams) {
 	score_stats_all = [];
-	for (var i = 1; i < num_Teams + 1; ++i) {
-		var player = teams[i];
+	Object.keys(teams).forEach(function(key,index) {
+		var player = teams[key];
 		var score_stats = get_score_stats(player, currentMatchupPeriod);
 		score_stats_all.push(score_stats);
-	}
+	});
 	return score_stats_all;
 }
 
 function get_standings(teams, num_Teams) {
 	var players = [];
-	for (var i=1; i < num_Teams + 1; i++) {
+	Object.keys(teams).forEach(function(key,index) {
 		var player = {};
-		player.firstName = teams[i].owners[0].firstName;
-		player.lastName = teams[i].owners[0].lastName;
-		player.wins = teams[i].record.overallWins;
-		player.losses = teams[i].record.overallLosses;
-		player.ties = teams[i].record.overallTies;
-		player.pointsFor = teams[i].record.pointsFor;
-		player.pointsAgainst = teams[i].record.pointsAgainst;
-		player.teamId = teams[i].teamId;
+		player.firstName = teams[key].owners[0].firstName;
+		player.lastName = teams[key].owners[0].lastName;
+		player.wins = teams[key].record.overallWins;
+		player.losses = teams[key].record.overallLosses;
+		player.ties = teams[key].record.overallTies;
+		player.pointsFor = teams[key].record.pointsFor;
+		player.pointsAgainst = teams[key].record.pointsAgainst;
+		player.teamId = teams[key].teamId;
 		players.push(player);
-	}
+	});
 	players.sort(standings_sort);
 	return players;
 }
@@ -255,8 +253,8 @@ function standings_sort(a,b) {
 
 function get_matchups(teams, currentMatchupPeriod, finalRegularSeasonMatchupPeriodId, num_Teams) {
 	matchups = [];
-	for (var i=1; i < num_Teams + 1; i++) {
-		var player = teams[i];
+	Object.keys(teams).forEach(function(key,index) {
+		var player = teams[key];
 		for (var j=currentMatchupPeriod; j < finalRegularSeasonMatchupPeriodId + 1; j++) {
 			var schedule = player.scheduleItems[j-1];
 			var matchup = schedule.matchups[0];
@@ -272,7 +270,7 @@ function get_matchups(teams, currentMatchupPeriod, finalRegularSeasonMatchupPeri
 				matchups.push([teamId1, teamId2]);
 			}
 		}
-	}
+	});
 
 	return matchups;
 }
@@ -314,10 +312,13 @@ function simulate_season(team_variables, matchups) {
 			team_variables_duplicate[teamId1].losses += 1;
 		}
 	});
-	for (var i=1; i < Object.keys(team_variables).length + 1; i++) {
-		team_results.push(team_variables_duplicate[i]);
-	}
+
+	Object.keys(team_variables_duplicate).forEach(function(key,index) {
+		team_results.push(team_variables_duplicate[key]);
+	});
+
 	team_results.sort(standings_sort);
+
 	for (var i=0; i < team_results.length; i++) {
 		final_standings[team_results[i].teamId] = i+1;
 	}
