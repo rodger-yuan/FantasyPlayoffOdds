@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 	<head>
-        <title>Fantasy Football Playoff Odds</title> 
+        <title>Fantasy Football Power Rankings and Playoff Odds</title> 
         <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
         <link href="https://fonts.googleapis.com/css?family=Abel" rel="stylesheet">
         <style>
@@ -86,9 +86,15 @@
             th {
                 font-size: 18px;
             }
+
+            table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after { 
+			    content: " \25B4\25BE" 
+			}
+			
         </style>
         <script src=https://cdnjs.cloudflare.com/ajax/libs/mathjs/3.16.5/math.js></script>
         <script src="https://code.jquery.com/jquery-1.11.2.min.js"></script>
+        <script src="sorttable.js"></script>
         <script src="main.js"></script>
     </head>
     <body> 
@@ -102,6 +108,7 @@
                 <li>Eligible League Settings: Playoffs based on league record with points scored tiebreaker</li>
                 <li>Ensure that your league settings are set to Public</li>
                 <li>Enter your League ID and the desired Year (Ex. SD League: 1391371, Mod League: 806354)</li>
+                <li>Power Ranking Formula: (0.5 x Two-Step Dominance Z-Score) + (0.5 x Average Score Z-Score)</li>
                 <li>Monte Carlo simulation (2,000 iterations)</li>
                 <li>Likelihood of each matchup is determined by taking the avg and std. dev. of points scored for each team for the most recent 5 games</li>
             </ul>
@@ -114,11 +121,24 @@
                 <label for="leagueId">League ID:</label>
                 <input type="text" name="leagueId" id="leagueId" value="1391371">
                 <label for="seasonId">Year:</label>
-                <input type="text" name="seasonId" id="seasonId" value="2017">
+                <input type="text" name="seasonId" id="seasonId" value="2018">
             </form>
             <button onclick="calculate()">Calculate</button>
         </div>
         <div>
+        	<div class="title">
+                <h3> Power Rankings </h3>
+            </div>
+            <div class="table">
+                <table id="power_rankings">
+                	<thead>
+	                    <tr id="power_rankings_header">
+	                        <th width = "20%">Press Calculate</th>
+	                    </tr>
+	                </thead>
+                    <tbody id="power_rankings_body"></tbody>
+                </table>
+            </div>
             <div class="title">
                 <h3> Playoff Odds </h3>
             </div>
@@ -151,9 +171,11 @@
             </div>
             <div class="table">
                 <table id="scoreboard">
-                    <tr id="scoreboard_header">
-                        <th width = "20%">Press Calculate</th>
-                    </tr>
+                	<thead>
+	                    <tr id="scoreboard_header">
+	                        <th width = "20%">Press Calculate</th>
+	                    </tr>
+                    </thead>
                     <tbody id="scoreboard_body"></tbody>
                 </table>
             </div>
