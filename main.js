@@ -338,7 +338,7 @@ function add_matrix(A,B) {
 	for (var i=0; i<length; i++) {
 		result[i] = [];
 		for (var j=0; j<length; j++) {
-			result[i][j] = A[i][j] + B[i][j];
+			result[i][j] = A[i][j] + 0.5*B[i][j];
 		}
 	}
 
