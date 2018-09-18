@@ -406,7 +406,7 @@ function power_rankings_all(teams, currentMatchupPeriod, finalRegularSeasonMatch
 		power_score = [];
 
 		for (var i=0; i<num_Teams; i++) {
-			power_score[i] = two_step_dominance[i]*0.5 + average_score[i]*0.5;
+			power_score[i] = two_step_dominance[i]*0.4 + average_score[i]*0.6;
 		}
 
 		pr_array.push(power_score);
