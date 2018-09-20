@@ -1,5 +1,6 @@
 
 function calculate() {
+
 	var base_url = "https://games.espn.com/ffl/api/v2/leagueSettings?"
 	var leagueId = document.getElementById("leagueId").value;
 	var seasonId = document.getElementById("seasonId").value;
@@ -11,8 +12,11 @@ function calculate() {
 	    	var num_Teams = data.leaguesettings.leagueMembers.length;
 	    	var playoff_teams = data.leaguesettings.playoffTeamCount;
 	    	var finalRegularSeasonMatchupPeriodId = data.leaguesettings.finalRegularSeasonMatchupPeriodId
-	    	var leagueMembers = data.leaguesettings.leagueMembers;
 	    	var teams = data.leaguesettings.teams;
+
+	    	Object.keys(teams).forEach(function(key,index) {
+	    		teams[key].index = index;
+	    	})
 
 	    	for (var i = 0; i < teams[Object.keys(teams)[0]].scheduleItems.length; ++i) { // find out which week it is
 	    		var item = teams[Object.keys(teams)[0]].scheduleItems[i];
@@ -273,35 +277,35 @@ function get_score_stats_all(teams, currentMatchupPeriod, num_Teams) {
 }
 
 function get_power_matrix(week, num_Teams, teams) {
-	var win_matrix = [] //row is wining team, column is losing team
+	var win_matrix = [] //row is winning team index, column is losing team index
 
-	for(var i=0; i<num_Teams; i++) {
+	for(var i=0; i<num_Teams; i++) { //make a square matrix filled with zeros
     	win_matrix[i] = [];
 	    for(var j=0; j<num_Teams; j++) {
 	        win_matrix[i][j] = 0;
     	}	
 	}
-	
+
 	Object.keys(teams).forEach(function(key,index) {
 		var schedule = teams[key].scheduleItems
-		for(var i=0; i<week + 1; i++) {
+		for(var i=0; i<week + 1; i++) { //up until this week, populate power matrix
 			matchup = schedule[i].matchups[0]
 			away_team = [matchup.awayTeamId, matchup.awayTeamScores[0]]
 			home_team = [matchup.homeTeamId, matchup.homeTeamScores[0]]
 			if (key == away_team[0]) {
 				if (away_team[1] > home_team[1]) {
-					win_matrix[away_team[0]-1][home_team[0]-1] += 1
+					win_matrix[teams[away_team[0]].index][teams[home_team[0]].index] += 1
 				}
 				if (away_team[1] == home_team[1]) {
-					win_matrix[away_team[0]-1][home_team[0]-1] += 0.5
-			}
+					win_matrix[teams[away_team[0]].index][teams[home_team[0]].index] += 0.5
+				}
 			}
 			else if (key == home_team[0]) {
 				if (away_team[1] < home_team[1]) {
-					win_matrix[home_team[0]-1][away_team[0]-1] += 1
+					win_matrix[teams[home_team[0]].index][teams[away_team[0]].index] += 1
 				}
 				if (away_team[1] == home_team[1]) {
-					win_matrix[home_team[0]-1][away_team[0]-1] += 0.5
+					win_matrix[teams[home_team[0]].index][teams[away_team[0]].index] += 0.5
 				}
 			}
 		}
@@ -348,20 +352,20 @@ function add_matrix(A,B) {
 function get_average_score(week, num_teams, teams) {
 	var average_score = [];
 	Object.keys(teams).forEach(function(key,index) {
-		average_score[key-1] = 0 
+		average_score[teams[key].index] = 0 
 		var schedule = teams[key].scheduleItems
 		for(var i=0; i<week + 1; i++) {
 			matchup = schedule[i].matchups[0]
 			away_team = [matchup.awayTeamId, matchup.awayTeamScores[0]]
 			home_team = [matchup.homeTeamId, matchup.homeTeamScores[0]]
 			if (key == away_team[0]) {
-				average_score[key-1] += matchup.awayTeamScores[0];
+				average_score[teams[key].index] += matchup.awayTeamScores[0];
 			}
 			else if (key == home_team[0]) {
-				average_score[key-1] += matchup.homeTeamScores[0];
+				average_score[teams[key].index] += matchup.homeTeamScores[0];
 			}
 		}
-		average_score[key-1] = average_score[key-1]/(week+1);
+		average_score[teams[key].index] = average_score[teams[key].index]/(week+1);
 	});	
 	return average_score
 }
@@ -376,6 +380,7 @@ function z_score(X) {
 	for (var i=0; i<length; i++) {
 		sd += (X[i] - mean) * (X[i] - mean);
 	}
+
 	sd = sd/(length-1);
 	sd = Math.sqrt(sd);
 	for (var i=0; i<length; i++) {
@@ -398,6 +403,7 @@ function power_rankings_all(teams, currentMatchupPeriod, finalRegularSeasonMatch
 		for (var i=0; i<dominance_matrix.length; i++) {
 			two_step_dominance[i] = dominance_matrix[i].reduce((a,b)=>a+b,0)
 		}
+
 		two_step_dominance = z_score(two_step_dominance);
 
 		average_score = get_average_score(week, num_Teams, teams);
@@ -423,7 +429,7 @@ function power_rankings_all(teams, currentMatchupPeriod, finalRegularSeasonMatch
 			player.powerScore.push(0);
 		}
 		for (i=0; i<currentMatchupPeriod-1; ++i) {
-			player.powerScore[i] = pr_array[i][key-1];
+			player.powerScore[i] = pr_array[i][teams[key].index];
 		}
 		player.matchupPeriodId = currentMatchupPeriod;
 		players.push(player);
