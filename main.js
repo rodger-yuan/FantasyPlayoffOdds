@@ -2,10 +2,19 @@
 function calculate() {
 
 	var base_url = "https://games.espn.com/ffl/api/v2/leagueSettings?"
+	var base_url_boxscore = "https://games.espn.com/ffl/api/v2/boxscore?"
 	var leagueId = document.getElementById("leagueId").value;
 	var seasonId = document.getElementById("seasonId").value;
 
 	var settings_url = base_url + "leagueId=" + leagueId + "&seasonId=" + seasonId;
+	var boxscore_url = base_url_boxscore + "leagueId=" + leagueId + "&seasonId=" + seasonId;
+
+	// $.getJSON(boxscore_url,  // get scoreboard
+	//     function (bsdata) {
+	//     	console.log(bsdata)
+	//     	console.log(boxscore_url)
+	//     }
+	// )
 
 	$.getJSON(settings_url,  // get league settings
 	    function (data) {  // success callback
@@ -13,6 +22,8 @@ function calculate() {
 	    	var playoff_teams = data.leaguesettings.playoffTeamCount;
 	    	var finalRegularSeasonMatchupPeriodId = data.leaguesettings.finalRegularSeasonMatchupPeriodId
 	    	var teams = data.leaguesettings.teams;
+
+	    	console.log(data)
 
 	    	Object.keys(teams).forEach(function(key,index) {
 	    		teams[key].index = index;
@@ -181,8 +192,9 @@ function calculate() {
 				team_variables = {};
 				for (i = 0; i < score_stats_all.length; ++i) {
 					var teamId = score_stats_all[i].player.teamId;
-					var player_variables = {five_game_avg: math.mean(score_stats_all[i].scores.slice(5)),
-											five_game_std: math.std(score_stats_all[i].scores.slice(5)),
+					scores_length = score_stats_all[i].scores.length
+					var player_variables = {five_game_avg: math.mean(score_stats_all[i].scores.slice(scores_length-5, scores_length)),
+											five_game_std: math.std(score_stats_all[i].scores.slice(scores_length-5, scores_length)),
 											name: score_stats_all[i].name,
 											teamId: teamId};
 					team_standings.forEach(function(item){
