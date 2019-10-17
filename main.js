@@ -1,46 +1,74 @@
 
 function calculate() {
 
-	var base_url = "https://games.espn.com/ffl/api/v2/leagueSettings?"
-	var base_url_boxscore = "https://games.espn.com/ffl/api/v2/boxscore?"
+	var base_url = "https://fantasy.espn.com/apis/v3/games/ffl/seasons/"
+	var base_url_historial = "https://fantasy.espn.com/apis/v3/games/ffl/leagueHistory/"
 	var leagueId = document.getElementById("leagueId").value;
 	var seasonId = document.getElementById("seasonId").value;
 
-	var settings_url = base_url + "leagueId=" + leagueId + "&seasonId=" + seasonId;
-	var boxscore_url = base_url_boxscore + "leagueId=" + leagueId + "&seasonId=" + seasonId;
-
-	// $.getJSON(boxscore_url,  // get scoreboard
+	var matchup_url = base_url + seasonId + "/segments/0/leagues/" + leagueId + "?view=mMatchup";
+	var league_info = base_url + seasonId + "/segments/0/leagues/" + leagueId + "?view=mSettings";
+	var team_info = base_url + seasonId + "/segments/0/leagues/" + leagueId + "?view=mBoxScore";
+	var standings = base_url + seasonId + "/segments/0/leagues/" + leagueId + "?view=mTeam";
+	// $.getJSON(other,  // get scoreboard
 	//     function (bsdata) {
 	//     	console.log(bsdata)
-	//     	console.log(boxscore_url)
 	//     }
 	// )
 
-	$.getJSON(settings_url,  // get league settings
-	    function (data) {  // success callback
-	    	var num_Teams = data.leaguesettings.leagueMembers.length;
-	    	var playoff_teams = data.leaguesettings.playoffTeamCount;
-	    	var finalRegularSeasonMatchupPeriodId = data.leaguesettings.finalRegularSeasonMatchupPeriodId
-	    	var teams = data.leaguesettings.teams;
+	$.when($.getJSON(matchup_url), $.getJSON(league_info), $.getJSON(team_info), $.getJSON(standings)).done( // get league settings
+	    function (data1, data2, data3, data4) {  // success callback
 
-	    	console.log(data)
+			console.log(data1)
+			console.log(data2)
+			console.log(data3)
+			console.log(data4)
 
-	    	Object.keys(teams).forEach(function(key,index) {
-	    		teams[key].index = index;
+			var team_names = data3[0].teams;
+	    	var num_Teams = data1[0].teams.length;
+	    	var playoff_teams = data2[0].settings.scheduleSettings.playoffTeamCount;
+	    	var finalRegularSeasonMatchupPeriodId = data2[0].settings.scheduleSettings.matchupPeriodCount;
+	    	var teams_key = []; // matrix to id
+	    	var standing = data4[0].teams;
+
+	    	Object.keys(data1[0].teams).forEach(function(key,index) {
+	    		teams_key[key] = data1[0].teams[key].id;
 	    	})
+	    	var teams_key_rev = []; // id to matrix
+	    	for (var i = 0; i < teams_key.length; ++i) {
+	    		teams_key_rev[teams_key[i]] = i;
+	    	}
+	    	// var teams = data.leaguesettings.teams;
 
-	    	for (var i = 0; i < teams[Object.keys(teams)[0]].scheduleItems.length; ++i) { // find out which week it is
-	    		var item = teams[Object.keys(teams)[0]].scheduleItems[i];
-	    		if (item.matchups[0].outcome == 0) {
-	    			var currentMatchupPeriod = item.matchupPeriodId;
+	    	// Object.keys(teams).forEach(function(key,index) {
+	    	// 	teams[key].index = index;
+	    	// })
+
+	    	// for (var i = 0; i < teams[Object.keys(teams)[0]].scheduleItems.length; ++i) { // find out which week it is
+	    	// 	var item = teams[Object.keys(teams)[0]].scheduleItems[i];
+	    	// 	if (item.matchups[0].outcome == 0) {
+	    	// 		var currentMatchupPeriod = item.matchupPeriodId;
+	    	// 		var reg_season = 1;
+	    	// 		break;
+	    	// 	}
+	    	// 	if (item.matchupPeriodId == finalRegularSeasonMatchupPeriodId) {
+	    	// 		var currentMatchupPeriod = finalRegularSeasonMatchupPeriodId;
+	    	// 		var reg_season = 0;
+	    	// 	}
+	    	// };
+
+	    	//Find out which week it is
+	    	var schedule = data1[0].schedule;
+	    	var reg_season = 0;
+	    	var currentMatchupPeriod = finalRegularSeasonMatchupPeriodId;
+	    	for (var i = 0; i < Object.keys(schedule).length; ++i) {
+	    		index = schedule[i];
+	    		if (index.winner == "UNDECIDED") {
+	    			var currentMatchupPeriod = index.matchupPeriodId;
 	    			var reg_season = 1;
 	    			break;
 	    		}
-	    		if (item.matchupPeriodId == finalRegularSeasonMatchupPeriodId) {
-	    			var currentMatchupPeriod = finalRegularSeasonMatchupPeriodId;
-	    			var reg_season = 0;
-	    		}
-	    	};
+	    	}
 
 	    	//Power Rankings
 	    	clearBox("power_rankings_header")
@@ -58,7 +86,7 @@ function calculate() {
 			}
 
 	    	var rankings = document.getElementById("power_rankings_body");
-	    	var pr_all = power_rankings_all(teams, currentMatchupPeriod, finalRegularSeasonMatchupPeriodId, num_Teams,reg_season); //score stats
+	    	var pr_all = power_rankings_all(schedule, currentMatchupPeriod, finalRegularSeasonMatchupPeriodId, num_Teams,reg_season, team_names, teams_key, teams_key_rev); //score stats
 
 	    	pr_all.forEach(function(team) {
 				var tr = document.createElement("tr");
@@ -89,7 +117,7 @@ function calculate() {
 			//Standings
 			clearBox("standings_body");
 			var standings = document.getElementById("standings_body");
-			team_standings = get_standings(teams, num_Teams);
+			team_standings = get_standings(standing, num_Teams);
 			team_standings.forEach(function(team) {
 				var tr = document.createElement("tr");
 				standings.appendChild(tr);
@@ -136,15 +164,21 @@ function calculate() {
 
 			var scoreboard = document.getElementById("scoreboard_body");
 
-			var score_stats_all = get_score_stats_all(teams, currentMatchupPeriod, num_Teams); //score stats
+			var score_stats_all = get_score_stats_all(schedule, standing, currentMatchupPeriod, num_Teams); //score stats
 			score_stats_all.forEach(function(score_stats) {
 				var tr = document.createElement("tr");
 				scoreboard.appendChild(tr);
 				var td = document.createElement("td"); //name
 				td.innerHTML = score_stats.name;
 				tr.appendChild(td);
-				for (var j = 1; j < finalRegularSeasonMatchupPeriodId + 1; ++j) { //scores
-					var score = get_score(score_stats.player, j);
+				for (var j = 0; j < finalRegularSeasonMatchupPeriodId; ++j) { //scores
+					var scorel = score_stats.scores.length;
+					if (j < scorel) {
+						var score = score_stats.scores[j];
+					}
+					else {
+						var score = 0;
+					}
 					var td = document.createElement("td");
 					td.innerHTML = Math.round(score);
 					tr.appendChild(td);
@@ -191,7 +225,7 @@ function calculate() {
 
 				team_variables = {};
 				for (i = 0; i < score_stats_all.length; ++i) {
-					var teamId = score_stats_all[i].player.teamId;
+					var teamId = score_stats_all[i].player.id;
 					scores_length = score_stats_all[i].scores.length
 					var player_variables = {five_game_avg: math.mean(score_stats_all[i].scores.slice(scores_length-5, scores_length)),
 											five_game_std: math.std(score_stats_all[i].scores.slice(scores_length-5, scores_length)),
@@ -208,7 +242,7 @@ function calculate() {
 					team_variables[teamId] = player_variables;
 				}
 				
-				matchups = get_matchups(teams,currentMatchupPeriod,finalRegularSeasonMatchupPeriodId, num_Teams);
+				matchups = get_matchups(schedule,standing,currentMatchupPeriod,finalRegularSeasonMatchupPeriodId, num_Teams);
 				results = monte_carlo(team_variables, matchups, 2000, num_Teams);
 
 				playoff_odds = document.getElementById("playoff_odds_body")
@@ -260,35 +294,49 @@ function get_score(player, matchupPeriodId) {
 	} 
 }
 
-function get_score_stats(player, currentMatchupPeriod) {
+function get_score_stats(player, schedule, currentMatchupPeriod) {
 	var scores = [];
-	for (var j = 1; j < currentMatchupPeriod; ++j) {
-		var score = get_score(player, j);
-		scores.push(score)
-	}
+	schedule.forEach(function(element) {
+		if (element.matchupPeriodId < currentMatchupPeriod) {
+			if (element.away.teamId == player.id) {
+				var score = element.away.totalPoints;
+				scores.push(score);
+			}
+			if (element.home.teamId == player.id) {
+				var score = element.home.totalPoints;
+				scores.push(score);
+			}
+		}
+	})
+
+	// for (var j = 1; j < currentMatchupPeriod; ++j) {
+	// 	var score = get_score(player, j);
+	// 	scores.push(score)
+	// }
 
 	var score_stats = {total: scores.reduce(function(a, b) { return a + b; }, 0), 
 						std: Math.round(math.std(scores)),
 						min: math.min(scores),
 						max: math.max(scores),
 						avg: Math.round(math.mean(scores)),
-						name: player.owners[0].firstName + " " + player.owners[0].lastName,
+						name: player.location + " " + player.nickname,
 						player: player,
 						scores: scores}
+
 	return score_stats
 }
 
-function get_score_stats_all(teams, currentMatchupPeriod, num_Teams) {
+function get_score_stats_all(schedule, standings, currentMatchupPeriod, num_Teams) {
 	score_stats_all = [];
-	Object.keys(teams).forEach(function(key,index) {
-		var player = teams[key];
-		var score_stats = get_score_stats(player, currentMatchupPeriod);
+	console.log(standings)
+	standings.forEach(function(element) {
+		var score_stats = get_score_stats(element, schedule, currentMatchupPeriod);
 		score_stats_all.push(score_stats);
 	});
 	return score_stats_all;
 }
 
-function get_power_matrix(week, num_Teams, teams) {
+function get_power_matrix(week, num_Teams, schedule, teams_key_rev) {
 	var win_matrix = [] //row is winning team index, column is losing team index
 
 	for(var i=0; i<num_Teams; i++) { //make a square matrix filled with zeros
@@ -298,27 +346,44 @@ function get_power_matrix(week, num_Teams, teams) {
     	}	
 	}
 
-	Object.keys(teams).forEach(function(key,index) {
-		var schedule = teams[key].scheduleItems
-		for(var i=0; i<week + 1; i++) { //up until this week, populate power matrix
-			matchup = schedule[i].matchups[0]
-			away_team = [matchup.awayTeamId, matchup.awayTeamScores[0]]
-			home_team = [matchup.homeTeamId, matchup.homeTeamScores[0]]
-			if (key == away_team[0]) {
-				if (away_team[1] > home_team[1]) {
-					win_matrix[teams[away_team[0]].index][teams[home_team[0]].index] += 1
-				}
-				if (away_team[1] == home_team[1]) {
-					win_matrix[teams[away_team[0]].index][teams[home_team[0]].index] += 0.5
-				}
+	// Object.keys(teams).forEach(function(key,index) {
+	// 	var schedule = teams[key].scheduleItems
+	// 	for(var i=0; i<week + 1; i++) { //up until this week, populate power matrix
+	// 		matchup = schedule[i].matchups[0]
+	// 		away_team = [matchup.awayTeamId, matchup.awayTeamScores[0]]
+	// 		home_team = [matchup.homeTeamId, matchup.homeTeamScores[0]]
+	// 		if (key == away_team[0]) {
+	// 			if (away_team[1] > home_team[1]) {
+	// 				win_matrix[teams[away_team[0]].index][teams[home_team[0]].index] += 1
+	// 			}
+	// 			if (away_team[1] == home_team[1]) {
+	// 				win_matrix[teams[away_team[0]].index][teams[home_team[0]].index] += 0.5
+	// 			}
+	// 		}
+	// 		else if (key == home_team[0]) {
+	// 			if (away_team[1] < home_team[1]) {
+	// 				win_matrix[teams[home_team[0]].index][teams[away_team[0]].index] += 1
+	// 			}
+	// 			if (away_team[1] == home_team[1]) {
+	// 				win_matrix[teams[home_team[0]].index][teams[away_team[0]].index] += 0.5
+	// 			}
+	// 		}
+	// 	}
+	// });
+
+	schedule.forEach(function(element) {
+		if (week + 2 > element.matchupPeriodId) {
+			away_team = [element.away.teamId, element.away.totalPoints];
+			home_team = [element.home.teamId, element.home.totalPoints];
+			if (away_team[1] > home_team[1]) {
+				win_matrix[teams_key_rev[away_team[0]]][teams_key_rev[home_team[0]]] += 1;
 			}
-			else if (key == home_team[0]) {
-				if (away_team[1] < home_team[1]) {
-					win_matrix[teams[home_team[0]].index][teams[away_team[0]].index] += 1
-				}
-				if (away_team[1] == home_team[1]) {
-					win_matrix[teams[home_team[0]].index][teams[away_team[0]].index] += 0.5
-				}
+			if (away_team[1] < home_team[1]) {
+				win_matrix[teams_key_rev[home_team[0]]][teams_key_rev[away_team[0]]] += 1;
+			}
+			if (away_team[1] == home_team[1]) {
+				win_matrix[teams_key_rev[away_team[0]]][teams_key_rev[home_team[0]]] += 0.5;
+				win_matrix[teams_key_rev[home_team[0]]][teams_key_rev[away_team[0]]] += 0.5;
 			}
 		}
 	});
@@ -361,24 +426,42 @@ function add_matrix(A,B) {
 	return result
 }
 
-function get_average_score(week, num_teams, teams) {
+function get_average_score(week, num_Teams, schedule, teams_key_rev) {
 	var average_score = [];
-	Object.keys(teams).forEach(function(key,index) {
-		average_score[teams[key].index] = 0 
-		var schedule = teams[key].scheduleItems
-		for(var i=0; i<week + 1; i++) {
-			matchup = schedule[i].matchups[0]
-			away_team = [matchup.awayTeamId, matchup.awayTeamScores[0]]
-			home_team = [matchup.homeTeamId, matchup.homeTeamScores[0]]
-			if (key == away_team[0]) {
-				average_score[teams[key].index] += matchup.awayTeamScores[0];
-			}
-			else if (key == home_team[0]) {
-				average_score[teams[key].index] += matchup.homeTeamScores[0];
-			}
+
+	for (var i = 0; i < num_Teams; i++) {
+		average_score[i] = 0;
+	}
+	// Object.keys(teams).forEach(function(key,index) {
+	// 	average_score[teams[key].index] = 0 
+	// 	var schedule = teams[key].scheduleItems
+	// 	for(var i=0; i<week + 1; i++) {
+	// 		matchup = schedule[i].matchups[0]
+	// 		away_team = [matchup.awayTeamId, matchup.awayTeamScores[0]]
+	// 		home_team = [matchup.homeTeamId, matchup.homeTeamScores[0]]
+	// 		if (key == away_team[0]) {
+	// 			average_score[teams[key].index] += matchup.awayTeamScores[0];
+	// 		}
+	// 		else if (key == home_team[0]) {
+	// 			average_score[teams[key].index] += matchup.homeTeamScores[0];
+	// 		}
+	// 	}
+	// 	average_score[teams[key].index] = average_score[teams[key].index]/(week+1);
+	// });	
+
+	schedule.forEach(function(element) {
+		if (week + 2 > element.matchupPeriodId) {
+			away_team = [element.away.teamId, element.away.totalPoints];
+			home_team = [element.home.teamId, element.home.totalPoints];
+			average_score[teams_key_rev[away_team[0]]] += away_team[1];
+			average_score[teams_key_rev[home_team[0]]] += home_team[1];
 		}
-		average_score[teams[key].index] = average_score[teams[key].index]/(week+1);
-	});	
+	});
+
+	for (var i = 0; i < average_score.length; i++) {
+		average_score[i] = average_score[i]/(week + 1);
+	}
+
 	return average_score
 }
 
@@ -399,9 +482,9 @@ function z_score(X) {
 		result[i] = (X[i]-mean)/sd;
 	}
 	return result
-}
+}	
 
-function power_rankings_all(teams, currentMatchupPeriod, finalRegularSeasonMatchupPeriodId, num_Teams, reg_season) {
+function power_rankings_all(schedule, currentMatchupPeriod, finalRegularSeasonMatchupPeriodId, num_Teams, reg_season, team_names, teams_key, teams_key_rev) {
 	pr_array = [];
 	if (currentMatchupPeriod == finalRegularSeasonMatchupPeriodId) {
 		if (reg_season == 0) {
@@ -409,7 +492,7 @@ function power_rankings_all(teams, currentMatchupPeriod, finalRegularSeasonMatch
 		}
 	}
 	for (var week = 0; week < currentMatchupPeriod-1; ++week) {
-		power_matrix = get_power_matrix(week, num_Teams, teams);
+		power_matrix = get_power_matrix(week, num_Teams, schedule, teams_key_rev);
 		dominance_matrix = add_matrix(power_matrix, square_matrix(power_matrix));
 		two_step_dominance = [];
 		for (var i=0; i<dominance_matrix.length; i++) {
@@ -418,7 +501,7 @@ function power_rankings_all(teams, currentMatchupPeriod, finalRegularSeasonMatch
 
 		two_step_dominance = z_score(two_step_dominance);
 
-		average_score = get_average_score(week, num_Teams, teams);
+		average_score = get_average_score(week, num_Teams, schedule, teams_key_rev);
 		average_score = z_score(average_score);
 
 		power_score = [];
@@ -432,16 +515,17 @@ function power_rankings_all(teams, currentMatchupPeriod, finalRegularSeasonMatch
 
 	players = [];
 
-	Object.keys(teams).forEach(function(key,index) {
+	team_names.forEach(function(element) {
 		var player = {};
-		player.firstName = teams[key].owners[0].firstName;
-		player.lastName = teams[key].owners[0].lastName;
+		player.firstName = element.location;
+		player.lastName = element.nickname;
+		player.id = element.id;
 		player.powerScore = [];
 		for (i=0; i<finalRegularSeasonMatchupPeriodId; ++i) {
 			player.powerScore.push(0);
 		}
 		for (i=0; i<currentMatchupPeriod-1; ++i) {
-			player.powerScore[i] = pr_array[i][teams[key].index];
+			player.powerScore[i] = pr_array[i][teams_key_rev[player.id]];
 		}
 		player.matchupPeriodId = currentMatchupPeriod;
 		players.push(player);
@@ -461,18 +545,18 @@ function power_rankings_sort(a,b) {
 	}
 }
 
-function get_standings(teams, num_Teams) { //list with each player, in order of standing
+function get_standings(standings, num_Teams) { //list with each player, in order of standing
 	var players = [];
-	Object.keys(teams).forEach(function(key,index) {
+	standings.forEach(function(element) {
 		var player = {};
-		player.firstName = teams[key].owners[0].firstName;
-		player.lastName = teams[key].owners[0].lastName;
-		player.wins = teams[key].record.overallWins;
-		player.losses = teams[key].record.overallLosses;
-		player.ties = teams[key].record.overallTies;
-		player.pointsFor = teams[key].record.pointsFor;
-		player.pointsAgainst = teams[key].record.pointsAgainst;
-		player.teamId = teams[key].teamId;
+		player.firstName = element.location;
+		player.lastName = element.nickname;
+		player.wins = element.record.overall.wins;
+		player.losses = element.record.overall.losses;
+		player.ties = element.record.overall.ties;
+		player.pointsFor = element.record.overall.pointsFor.toFixed(2);
+		player.pointsAgainst = element.record.overall.pointsAgainst.toFixed(2);
+		player.teamId = element.id;
 		players.push(player);
 	});
 	players.sort(standings_sort);
@@ -496,23 +580,31 @@ function standings_sort(a,b) {
 	}
 }
 
-function get_matchups(teams, currentMatchupPeriod, finalRegularSeasonMatchupPeriodId, num_Teams) {
+function get_matchups(schedule, standing, currentMatchupPeriod, finalRegularSeasonMatchupPeriodId, num_Teams) {
 	matchups = [];
-	Object.keys(teams).forEach(function(key,index) {
-		var player = teams[key];
-		for (var j=currentMatchupPeriod; j < finalRegularSeasonMatchupPeriodId + 1; j++) {
-			var schedule = player.scheduleItems[j-1];
-			var matchup = schedule.matchups[0];
-			var teamId1 = matchup.awayTeamId;
-			var teamId2 = matchup.homeTeamId;
-			var inArray = 0
-			for (var k = 0; k < matchups.length; k++) {
-				if (arrays_equal(matchups[k], [teamId1, teamId2])) {
-					inArray = 1;
-				}
-			}
-			if (inArray == 0) {
-				matchups.push([teamId1, teamId2]);
+	// Object.keys(teams).forEach(function(key,index) {
+	// 	var player = teams[key];
+	// 	for (var j=currentMatchupPeriod; j < finalRegularSeasonMatchupPeriodId + 1; j++) {
+	// 		var schedule = player.scheduleItems[j-1];
+	// 		var matchup = schedule.matchups[0];
+	// 		var teamId1 = matchup.awayTeamId;
+	// 		var teamId2 = matchup.homeTeamId;
+	// 		var inArray = 0
+	// 		for (var k = 0; k < matchups.length; k++) {
+	// 			if (arrays_equal(matchups[k], [teamId1, teamId2])) {
+	// 				inArray = 1;
+	// 			}
+	// 		}
+	// 		if (inArray == 0) {
+	// 			matchups.push([teamId1, teamId2]);
+	// 		}
+	// 	}
+	// });
+
+	schedule.forEach(function(element) {
+		if (element.matchupPeriodId > currentMatchupPeriod - 1) {
+			if (element.matchupPeriodId < finalRegularSeasonMatchupPeriodId + 1) {
+				matchups.push([element.away.teamId, element.home.teamId])
 			}
 		}
 	});
