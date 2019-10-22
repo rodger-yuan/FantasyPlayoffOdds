@@ -10,25 +10,29 @@ function calculate() {
 	var league_info = base_url + seasonId + "/segments/0/leagues/" + leagueId + "?view=mSettings";
 	var team_info = base_url + seasonId + "/segments/0/leagues/" + leagueId + "?view=mBoxScore";
 	var standings = base_url + seasonId + "/segments/0/leagues/" + leagueId + "?view=mTeam";
-	// $.getJSON(other,  // get scoreboard
+	var activity = base_url + seasonId + "/segments/0/leagues/" + leagueId + "?view=kona_league_communication";
+	var player_wl = base_url + seasonId + "/segments/0/leagues/" + leagueId + "?view=kona_player_info";
+	// $.getJSON(roster,  // get scoreboard
 	//     function (bsdata) {
 	//     	console.log(bsdata)
 	//     }
 	// )
 
-	$.when($.getJSON(matchup_url), $.getJSON(league_info), $.getJSON(team_info), $.getJSON(standings)).done( // get league settings
-	    function (data1, data2, data3, data4) {  // success callback
+	$.when($.getJSON(matchup_url), $.getJSON(league_info), $.getJSON(team_info), $.getJSON(standings), $.getJSON(activity), $.getJSON(player_wl)).done( // get league settings
+	    function (data1, data2, data3, data4, data5, data6) {  // success callback
 
 			console.log(data1)
 			console.log(data2)
 			console.log(data3)
 			console.log(data4)
+			console.log(data5)
+			console.log(data6)
 
 			var team_names = data3[0].teams;
 	    	var num_Teams = data1[0].teams.length;
 	    	var playoff_teams = data2[0].settings.scheduleSettings.playoffTeamCount;
 	    	var finalRegularSeasonMatchupPeriodId = data2[0].settings.scheduleSettings.matchupPeriodCount;
-	    	var teams_key = []; // matrix to id
+	    	var teams_key = []; // matrix to teamId
 	    	var standing = data4[0].teams;
 
 	    	Object.keys(data1[0].teams).forEach(function(key,index) {
@@ -275,6 +279,38 @@ function calculate() {
 				th.innerHTML = "Not Enough Data"
 				document.getElementById("playoff_odds_header").appendChild(th)
 			}
+
+			//GM Rank
+	    	clearBox("gm_rank_body");
+			activity_log = data5[0].communication.topics;
+			player_key = data6[0].players;
+			var transaction_log = get_transaction_log(activity_log, player_key)
+			var gm_rank_array = get_gm_rank(transaction_log, standing, teams_key_rev, teams_key)
+
+			var gm_rank = document.getElementById("gm_rank_body");
+			gm_rank_array.forEach(function(team) {
+				var tr = document.createElement("tr");
+				gm_rank.appendChild(tr);
+				var td = document.createElement("td"); //name
+				td.innerHTML = team.name;
+				tr.appendChild(td);
+				var td = document.createElement("td"); //total trades
+				td.innerHTML = team.tradeCount;
+				tr.appendChild(td);
+				var td = document.createElement("td"); //total traded players
+				td.innerHTML = team.tradedPlayers;
+				tr.appendChild(td);
+				var td = document.createElement("td"); //add drop
+				td.innerHTML = team.addDrop;
+				tr.appendChild(td);
+				var td = document.createElement("td"); //GM Rank
+				td.innerHTML = team.gm_rank.toFixed(2);
+				td.style.backgroundColor = "LightYellow"
+				tr.appendChild(td);
+			});
+
+			var gm_table = document.getElementById("gm_rank");
+			sorttable.makeSortable(gm_table);
 	    });
 };
 
@@ -328,7 +364,6 @@ function get_score_stats(player, schedule, currentMatchupPeriod) {
 
 function get_score_stats_all(schedule, standings, currentMatchupPeriod, num_Teams) {
 	score_stats_all = [];
-	console.log(standings)
 	standings.forEach(function(element) {
 		var score_stats = get_score_stats(element, schedule, currentMatchupPeriod);
 		score_stats_all.push(score_stats);
@@ -607,7 +642,7 @@ function get_matchups(schedule, standing, currentMatchupPeriod, finalRegularSeas
 				matchups.push([element.away.teamId, element.home.teamId])
 			}
 		}
-	});
+	});	
 
 	return matchups;
 }
@@ -675,4 +710,219 @@ function monte_carlo(team_variables, matchups, iterations, num_Teams) {
 		});
 	}
 	return results;
+}
+
+function get_transaction_log(activity_log, player_key) {
+	activity_map = {
+	    178: 'ADDED',
+	    180: 'ADDED',
+	    179: 'DROPPED',
+	    181: 'DROPPED',
+	    239: 'DROPPED',
+	    244: 'TRADED'
+	}
+
+	position_map = {
+	    0: 'QB',
+	    1: 'TQB',
+	    2: 'RB',
+	    3: 'RB/WR',
+	    4: 'WR',
+	    5: 'WR/TE',
+	    6: 'TE',
+	    7: 'OP',
+	    8: 'DT',
+	    9: 'DE',
+	    10: 'LB',
+	    11: 'DL',
+	    12: 'CB',
+	    13: 'S',
+	    14: 'DB',
+	    15: 'DP',
+	    16: 'D/ST',
+	    17: 'K',
+	    18: 'P',
+	    19: 'HC',
+	    20: 'BE',
+	    21: 'IR',
+	    22: '',
+	    23: 'RB/WR/TE',
+	    24: 'ER',
+	    25: 'Rookie',
+	    'QB': 0,
+	    'RB': 2,
+	    'WR': 4,
+	    'TE': 6,
+	    'D/ST': 16,
+	    'K': 17,
+	    'FLEX': 23
+	}
+
+	pro_team_map = {
+	    0 : 'None',
+	    1 : 'ATL',
+	    2 : 'BUF',
+	    3 : 'CHI',
+	    4 : 'CIN',
+	    5 : 'CLE',
+	    6 : 'DAL',
+	    7 : 'DEN',
+	    8 : 'DET',
+	    9 : 'GB',
+	    10: 'TEN',
+	    11: 'IND',
+	    12: 'KC',
+	    13: 'OAK',
+	    14: 'LAR',
+	    15: 'MIA',
+	    16: 'MIN',
+	    17: 'NE',
+	    18: 'NO',
+	    19: 'NYG',
+	    20: 'NYJ',
+	    21: 'PHI',
+	    22: 'ARI',
+	    23: 'PIT',
+	    24: 'LAC',
+	    25: 'SF',
+	    26: 'SEA',
+	    27: 'TB',
+	    28: 'WSH',
+	    29: 'CAR',
+	    30: 'JAX',
+	    33: 'BAL',
+	    34: 'HOU'
+	}
+
+	var player_dict = {};
+	player_key.forEach(function(person){
+		player_dict[person.id] = {
+			fullName: person.player.fullName,
+			ownership: person.player.ownership,
+			rankings: person.player.rankings,
+			stats: person.player.stats,
+			team: person.onTeamId,
+			ratings: person.ratings,
+			draftRanks: person.player.draftRanksByRankType,
+			proTeamId: pro_team_map[person.player.proTeamId],
+			defaultPositionId: position_map[person.player.defaultPositionId]
+		}
+	})
+
+	activity_log = activity_log.sort(function(a,b){return a.date - b.date})
+
+	var add_log = [];
+	var drop_log = [];
+	var trade_log = [];
+	var add_options = [178, 180];
+	var drop_options = [179, 181, 239];
+	activity_log.forEach(function(topic){
+		if (typeof topic.messages !== "undefined") {
+			topic.messages.forEach(function(message){
+				if (add_options.includes(message.messageTypeId)) {
+					add_log.push(message);
+				}
+				if (drop_options.includes(message.messageTypeId)) {
+					drop_log.push(message);
+				}
+				if (message.messageTypeId == 244) {
+					trade_log.push(message);
+				}
+			})
+		}
+	})
+
+	var add_log_fixed = [];
+	var drop_log_fixed = [];
+	var trade_log_fixed = [];
+	add_log.forEach(function(item){
+		var fix_date = new Date(item.date);
+		if (item.messageTypeId == 180) {
+			add_log_fixed.push({
+				date: fix_date.toLocaleString(),
+				auctionPrice: item.from,
+				targetId: player_dict[item.targetId],
+				team: item.to
+			})
+		}
+		if (item.messageTypeId == 178) {
+			add_log_fixed.push({
+				date: fix_date.toLocaleString(),
+				auctionPrice: 0,
+				targetId: player_dict[item.targetId],
+				team: item.to
+			})
+		}
+	})
+
+	drop_log.forEach(function(item){
+		var fix_date = new Date(item.date);
+		if (drop_options.includes(item.messageTypeId)) {
+			drop_log_fixed.push({
+				date: fix_date.toLocaleString(),
+				targetId: player_dict[item.targetId],
+				team: item.to
+			})
+		}
+	})
+
+	trade_log.forEach(function(item){
+		var fix_date = new Date(item.date);
+		if (item.messageTypeId == 244) {
+			trade_log_fixed.push({
+				date: fix_date.toLocaleString(),
+				targetId: player_dict[item.targetId],
+				team_to: item.to,
+				team_from: item.from
+			})
+		}
+	})
+
+	return {
+		trade: trade_log_fixed,
+		add: add_log_fixed,
+		drop: drop_log_fixed
+	}
+}
+
+function get_gm_rank(transaction_log, standing, teams_key_rev, teams_key) {
+	var trade_log = transaction_log.trade;
+	var gm_rank_array = [];
+	var trade_counter = [];
+	var add_drop_counter = [];
+	var traded_players = [];
+
+	standing.forEach(function(team){
+		trade_counter[teams_key_rev[team.id]] = team.transactionCounter.trades;
+		add_drop_counter[teams_key_rev[team.id]] = team.transactionCounter.acquisitions;
+		traded_players[teams_key_rev[team.id]] = 0;
+	})
+
+	trade_log.forEach(function(item) {
+		traded_players[teams_key_rev[item.team_to]] += 1;
+		traded_players[teams_key_rev[item.team_from]] += 1;
+	})
+
+	console.log(trade_counter)
+	console.log(add_drop_counter)
+	console.log(traded_players)
+
+	trade_counter_z = z_score(trade_counter);
+	add_drop_counter_z = z_score(add_drop_counter);
+	traded_players_z = z_score(traded_players);
+
+	standing.forEach(function(team) {
+		var player = {
+			name: team.location + " " + team.nickname,
+			tradeCount: trade_counter[teams_key_rev[team.id]],
+			tradedPlayers: traded_players[teams_key_rev[team.id]],
+			addDrop: add_drop_counter[teams_key_rev[team.id]],
+			gm_rank: 0.45*trade_counter_z[teams_key_rev[team.id]] + 0.1*add_drop_counter_z[teams_key_rev[team.id]] + 0.45*traded_players_z[teams_key_rev[team.id]]
+		}
+		gm_rank_array.push(player);
+	})
+
+	gm_rank_array.sort(function(a,b){return b.gm_rank - a.gm_rank})
+
+	return gm_rank_array
 }
