@@ -311,6 +311,61 @@ function calculate() {
 
 			var gm_table = document.getElementById("gm_rank");
 			sorttable.makeSortable(gm_table);
+
+			//Best Waiver Additions
+			clearBox("waivera_body");
+			var top_adds = get_top_adds(transaction_log.add, transaction_log.drop, player_key, data1[0].teams);
+			var waivera = document.getElementById("waivera_body");
+			for (i = 0; i < 10; i++) {
+				var tr = document.createElement("tr");
+				waivera.appendChild(tr);
+				var td = document.createElement("td"); //rank
+				td.innerHTML = i+1;
+				tr.appendChild(td);
+				var td = document.createElement("td"); //name
+				td.innerHTML = top_adds[i][0].targetId.fullName;
+				tr.appendChild(td);
+				var td = document.createElement("td"); //ppw
+				td.innerHTML = top_adds[i][0].targetId.stats[top_adds[i][0].targetId.stats.length - 1].appliedAverage.toFixed(2);
+				tr.appendChild(td);
+				var td = document.createElement("td"); //price
+				td.innerHTML = "$" + top_adds[i][0].auctionPrice.toString();
+				tr.appendChild(td);
+				var td = document.createElement("td"); //date added
+				td.innerHTML = top_adds[i][0].date;
+				tr.appendChild(td);
+				var td = document.createElement("td"); //Team
+				td.innerHTML = team_names[teams_key_rev[top_adds[i][0].team]].location + " " + team_names[teams_key_rev[top_adds[i][0].team]].nickname;
+				tr.appendChild(td);
+			};
+
+			//Most Expensive Waiver Additions
+			clearBox("waiverb_body");
+			var ex_adds = transaction_log.add.sort(function(a,b){return b.auctionPrice-a.auctionPrice});
+			console.log(ex_adds)
+			var waiverb = document.getElementById("waiverb_body");
+			for (i = 0; i < 10; i++) {
+				var tr = document.createElement("tr");
+				waiverb.appendChild(tr);
+				var td = document.createElement("td"); //rank
+				td.innerHTML = i+1;
+				tr.appendChild(td);
+				var td = document.createElement("td"); //name
+				td.innerHTML = ex_adds[i].targetId.fullName;
+				tr.appendChild(td);
+				var td = document.createElement("td"); //ppw
+				td.innerHTML = ex_adds[i].targetId.stats[ex_adds[i].targetId.stats.length - 1].appliedAverage.toFixed(2);
+				tr.appendChild(td);
+				var td = document.createElement("td"); //price
+				td.innerHTML = "$" + ex_adds[i].auctionPrice.toString();
+				tr.appendChild(td);
+				var td = document.createElement("td"); //date added
+				td.innerHTML = ex_adds[i].date;
+				tr.appendChild(td);
+				var td = document.createElement("td"); //Team
+				td.innerHTML = team_names[teams_key_rev[ex_adds[i].team]].location + " " + team_names[teams_key_rev[ex_adds[i].team]].nickname;
+				tr.appendChild(td);
+			};
 	    });
 };
 
@@ -726,9 +781,9 @@ function get_transaction_log(activity_log, player_key) {
 	    0: 'QB',
 	    1: 'TQB',
 	    2: 'RB',
-	    3: 'RB/WR',
-	    4: 'WR',
-	    5: 'WR/TE',
+	    3: 'WR',
+	    4: 'TE',
+	    5: 'K',
 	    6: 'TE',
 	    7: 'OP',
 	    8: 'DT',
@@ -805,7 +860,9 @@ function get_transaction_log(activity_log, player_key) {
 			ratings: person.ratings,
 			draftRanks: person.player.draftRanksByRankType,
 			proTeamId: pro_team_map[person.player.proTeamId],
-			defaultPositionId: position_map[person.player.defaultPositionId]
+			defaultPositionId: position_map[person.player.defaultPositionId],
+			playerId: person.id,
+			position_raw: person.player.defaultPositionId
 		}
 	})
 
@@ -840,6 +897,7 @@ function get_transaction_log(activity_log, player_key) {
 		if (item.messageTypeId == 180) {
 			add_log_fixed.push({
 				date: fix_date.toLocaleString(),
+				date_raw: item.date,
 				auctionPrice: item.from,
 				targetId: player_dict[item.targetId],
 				team: item.to
@@ -848,6 +906,7 @@ function get_transaction_log(activity_log, player_key) {
 		if (item.messageTypeId == 178) {
 			add_log_fixed.push({
 				date: fix_date.toLocaleString(),
+				date_raw: item.date,
 				auctionPrice: 0,
 				targetId: player_dict[item.targetId],
 				team: item.to
@@ -860,6 +919,7 @@ function get_transaction_log(activity_log, player_key) {
 		if (drop_options.includes(item.messageTypeId)) {
 			drop_log_fixed.push({
 				date: fix_date.toLocaleString(),
+				date_raw: item.date,
 				targetId: player_dict[item.targetId],
 				team: item.to
 			})
@@ -871,6 +931,7 @@ function get_transaction_log(activity_log, player_key) {
 		if (item.messageTypeId == 244) {
 			trade_log_fixed.push({
 				date: fix_date.toLocaleString(),
+				date_raw: item.date,
 				targetId: player_dict[item.targetId],
 				team_to: item.to,
 				team_from: item.from
@@ -903,10 +964,6 @@ function get_gm_rank(transaction_log, standing, teams_key_rev, teams_key) {
 		traded_players[teams_key_rev[item.team_from]] += 1;
 	})
 
-	console.log(trade_counter)
-	console.log(add_drop_counter)
-	console.log(traded_players)
-
 	trade_counter_z = z_score(trade_counter);
 	add_drop_counter_z = z_score(add_drop_counter);
 	traded_players_z = z_score(traded_players);
@@ -925,4 +982,42 @@ function get_gm_rank(transaction_log, standing, teams_key_rev, teams_key) {
 	gm_rank_array.sort(function(a,b){return b.gm_rank - a.gm_rank})
 
 	return gm_rank_array
+}
+
+function get_top_adds(add, drop, player_key) {
+	var legit_adds = [];
+	add.forEach(function(add_item){
+		var stillonteam = 1;
+		drop.forEach(function(drop_item) { //make sure player is still on team
+			if (add_item.targetId.playerId == drop_item.targetId.playerId) { //is added player also on dropped list?
+				if (add_item.date_raw < drop_item.date_raw) { //was the player added before he was dropped?
+					stillonteam = 0;
+				}
+			}
+		})
+		if (stillonteam == 1) {
+			var rating = 100;
+			if (add_item.targetId.defaultPositionId.includes("QB")) {
+				rating = add_item.targetId.ratings[0].positionalRanking;
+			}
+			if (add_item.targetId.defaultPositionId.includes("WR")) {
+				rating = add_item.targetId.ratings[0].positionalRanking/2.5;
+			}
+			if (add_item.targetId.defaultPositionId.includes("RB")) {
+				rating = add_item.targetId.ratings[0].positionalRanking/2.5;
+			}
+			if (add_item.targetId.defaultPositionId.includes("TE")) {
+				rating = add_item.targetId.ratings[0].positionalRanking*1.5;
+			}
+			if (add_item.targetId.ratings[0].positionalRanking == 0) {
+				rating = 100;
+			}
+			legit_adds.push([add_item, rating])
+		}
+	})
+
+	legit_adds.sort(function(a,b){return a[1] - b[1]})
+
+	console.log(legit_adds)
+	return legit_adds
 }
